@@ -168,3 +168,5 @@ nsight-systems*
 
 # Hydra
 multirun/
+
+outputs/water_tank/inferencers/simulation.vtp
