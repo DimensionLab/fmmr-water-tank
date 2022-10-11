@@ -10,6 +10,7 @@ def generate_velocity_profile_3d():
     data = np.load(to_absolute_path("outputs/water_tank/inferencers/inf_data.npz"), allow_pickle=True)
     data = np.atleast_1d(data.f.arr_0)[0]
     # velocity in 3D
+    pos = np.dstack((data["x"], data["y"], data["z"]))
     V = np.dstack((data["u"], data["v"], data["w"]))
 
     save_var = {
@@ -17,6 +18,7 @@ def generate_velocity_profile_3d():
         "y": data["y"],
         "z": data["z"],
         "p": data["p"],
+        "pos": pos,
         "V": V,
     }
 
