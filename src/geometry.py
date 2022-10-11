@@ -2,7 +2,6 @@ import numpy as np
 from sympy import sqrt, Max
 from modulus.hydra import to_absolute_path
 from modulus.geometry.tessellation import Tessellation
-from modulus.utils.io.vtk import var_to_polyvtk
 
 
 class WaterTank:

@@ -170,3 +170,4 @@ nsight-systems*
 multirun/
 
 outputs/water_tank/inferencers/simulation.vtp
+outputs/water_tank/inferencers/velocity_profile.vtp
