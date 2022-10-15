@@ -56,7 +56,7 @@ class ModulusWaterTankRunner(object):
             self._inferencer.eco = value
 
     def load_inferencer(self, checkpoint_dir: Union[str, None] = None):
-        """Create Modulus Aneurysm inferencer object. This can take time since
+        """Create Modulus Water Tank inferencer object. This can take time since
         it will initialize the model
 
         Parameters
@@ -103,10 +103,10 @@ class ModulusWaterTankRunner(object):
 
         stl_path = Path(self.data_path) / Path("stl_files")
         self.interior_mesh = Tessellation.from_stl(
-            Path(stl_path) / Path("aneurysm_closed_blender.stl"), airtight=True
+            Path(stl_path) / Path("water_tank_closed.stl"), airtight=True
         )
-        center = (-18.40381048596882, -50.285383353981196, 12.848136936899031)
-        scale = 0.4
+        center = (0, 0, 0)
+        scale = 1.0
 
         self.interior_mesh = normalize_mesh(self.interior_mesh, center, scale)
 
@@ -114,7 +114,7 @@ class ModulusWaterTankRunner(object):
         self,
         resolution: List[int] = [256, 256, 256],
     ) -> Dict[str, np.array]:
-        """Runs inference for Aneurysm
+        """Runs inference for Water Tank
 
         Args:
             resolution (List[int], optional): Voxel resolution. Defaults to [256, 256, 256].
@@ -124,10 +124,10 @@ class ModulusWaterTankRunner(object):
         """
         self.progress_bar.value = 0
         if self._inferencer is None:
-            print("Loading Aneurysm inferencer")
+            print("Loading Water Tank inferencer")
             self.load_inferencer(checkpoint_dir="./checkpoints")
             self.progress_bar.value = 0.05
-            print("Loading Aneurysm geometry")
+            print("Loading Water Tank geometry")
             self.load_geometry()
             self.progress_bar.value = 0.1
 

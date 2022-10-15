@@ -65,7 +65,7 @@ class Visualizer:
         # Get the vtkm bridge context
         self._vtkm_bridge = None
         print(
-            f"[modulus_ext.scenario.aneurysm.visualizer]_vtkm_bridge interface: {self._vtkm_bridge}"
+            f"[modulus_ext.scenario.water_tank.visualizer]_vtkm_bridge interface: {self._vtkm_bridge}"
         )
         self.parameters = VisParameters()
 
@@ -144,17 +144,17 @@ class Visualizer:
         self.normalized_velocity[mask] = 0
 
         self.update_stage()
-        self._vtkm_bridge.set_field_data("aneurysm_velocity", velocity, n_components=3)
+        self._vtkm_bridge.set_field_data("water_tank_velocity", velocity, n_components=3)
         self._vtkm_bridge.set_field_data(
-            "aneurysm_normalized_velocity", self.normalized_velocity, n_components=3
+            "water_tank_normalized_velocity", self.normalized_velocity, n_components=3
         )
-        self._vtkm_bridge.set_field_data("aneurysm_velmag", velmag, n_components=1)
-        self._vtkm_bridge.set_regular_grid_bounds("aneurysm", *bounds)
+        self._vtkm_bridge.set_field_data("water_tank_velmag", velmag, n_components=1)
+        self._vtkm_bridge.set_regular_grid_bounds("water_tank", *bounds)
         self._vtkm_bridge.set_regular_grid_extent(
-            "aneurysm", *tuple(reversed(velmag.shape[:3]))
+            "water_tank", *tuple(reversed(velmag.shape[:3]))
         )
         if self._seedpoints is not None:
-            self._vtkm_bridge.set_points("aneurysm_points", self._seedpoints)
+            self._vtkm_bridge.set_points("water_tank_points", self._seedpoints)
 
         self.update_generated()
         
@@ -202,15 +202,15 @@ class Visualizer:
             self.all_points, self.velocity, npoints=self.parameters.streamline_count
         )
 
-        self._vtkm_bridge.set_points("aneurysm_points", self._seedpoints)
+        self._vtkm_bridge.set_points("water_tank_points", self._seedpoints)
         temp = self._streamlines_primname
         self._streamlines_primname = self._vtkm_bridge.visualize_streamlines(
             enabled=True,
-            streamline_name="aneurysm_streamlines",
-            velocity_grid_name="aneurysm",
-            velocity_data_array_name="aneurysm_normalized_velocity",
-            sample_quantity_name="aneurysm_velmag",
-            seed_points_name="aneurysm_points",
+            streamline_name="water_tank_streamlines",
+            velocity_grid_name="water_tank",
+            velocity_data_array_name="water_tank_normalized_velocity",
+            sample_quantity_name="water_tank_velmag",
+            seed_points_name="water_tank_points",
             step_size=self.parameters.streamline_step_size,
             n_steps=int(self.parameters.streamline_step_count),
             enable_tube_filter=True,
@@ -234,10 +234,10 @@ class Visualizer:
         # velocity magnitude isosurface
         isosurface_prim = self._vtkm_bridge.visualize_isosurface(
             enabled=True,
-            isosurface_name="aneurysm_isosurface",
-            regular_grid_name="aneurysm",
-            field_data_name="aneurysm_velmag",
-            sample_quantity_name="aneurysm_velmag",
+            isosurface_name="water_tank_isosurface",
+            regular_grid_name="water_tank",
+            field_data_name="water_tank_velmag",
+            sample_quantity_name="water_tank_velmag",
             isovalue=self.parameters.isovalue,
         )
 
@@ -260,9 +260,9 @@ class Visualizer:
         # Use the bridge to generate slices for the data
         self._slice_primname_x = self._vtkm_bridge.visualize_slice(
             enabled=True,
-            slice_name="aneurysm_slice_x",
-            regular_grid_name="aneurysm",
-            field_data_name="aneurysm_velmag",
+            slice_name="water_tank_slice_x",
+            regular_grid_name="water_tank",
+            field_data_name="water_tank_velmag",
             az=90.,
             el=0.0,
             pos=self.parameters.slice_x_pos,
@@ -270,9 +270,9 @@ class Visualizer:
         print(f"visualized slice: {self._slice_primname_x}")
         self._slice_primname_y = self._vtkm_bridge.visualize_slice(
             enabled=True,
-            slice_name="aneurysm_slice_y",
-            regular_grid_name="aneurysm",
-            field_data_name="aneurysm_velmag",
+            slice_name="water_tank_slice_y",
+            regular_grid_name="water_tank",
+            field_data_name="water_tank_velmag",
             az=0.0,
             el=0.0,
             pos=self.parameters.slice_y_pos,
@@ -280,9 +280,9 @@ class Visualizer:
         print(f"visualized slice: {self._slice_primname_y}")
         self._slice_primname_z = self._vtkm_bridge.visualize_slice(
             enabled=True,
-            slice_name="aneurysm_slice_z",
-            regular_grid_name="aneurysm",
-            field_data_name="aneurysm_velmag",
+            slice_name="water_tank_slice_z",
+            regular_grid_name="water_tank",
+            field_data_name="water_tank_velmag",
             az=0.0,
             el=90,
             pos=self.parameters.slice_z_pos,

@@ -27,7 +27,7 @@ from .water_tank_runner import ModulusWaterTankRunner
 from .constants import bounds
 from .src.water_tank import inlet_vel
 
-class AneurysmScenario(ModulusOVScenario):
+class WaterTankScenario(ModulusOVScenario):
     def __init__(self):
         self._init_task = asyncio.ensure_future(self.deferred_init())
 
@@ -205,14 +205,14 @@ class AneurysmScenario(ModulusOVScenario):
         self.simulator_runner.eco = eco
 
     def load_template(self):
-        print("here")
+        print("loading template")
         usd_context = omni.usd.get_context()
         template_file = Path(os.path.dirname(__file__)) / Path(
-            "../data/aneurysm_template.usda"
+            "../data/water_tank_template.usda"
         )
         self.template_temp_file = str(
             Path(os.path.dirname(__file__))
-            / Path("../data/aneurysm_template_temp.usda")
+            / Path("../data/water_tank_template_temp.usda")
         )
         shutil.copyfile(template_file, self.template_temp_file)
         usd_context.open_stage(self.template_temp_file)
@@ -260,7 +260,7 @@ class AneurysmScenario(ModulusOVScenario):
         self._vel_mask = mask
         self._bounds = np.array(self.simulator_runner.bounds).flatten()
 
-        print("AneurysmScenario inference ended")
+        print("WaterTankScenario inference ended")
         self._eval_complete = True
         self.inf_progress.value = 1.0
         self.inf_button.text = "Inference"
@@ -336,13 +336,13 @@ class AneurysmScenario(ModulusOVScenario):
 # Any class derived from `omni.ext.IExt` in top level module (defined in `python.modules` of `extension.toml`) will be
 # instantiated when extension gets enabled and `on_startup(ext_id)` will be called. Later when extension gets disabled
 # on_shutdown() is called.
-class AneurysmExt(omni.ext.IExt):
+class WaterTankExt(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
     def on_startup(self, ext_id):
-        print("[modulus.scenario.Aneurysm] Aneurysm scenario startup")
-        self.scenario = AneurysmScenario()
+        print("[modulus.scenario.WaterTank] Water tank scenario startup")
+        self.scenario = WaterTankScenario()
 
     def on_shutdown(self):
         self.scenario.__del__()
-        print("[modulus.scenario.Aneurysm] Aneurysm scenario shutdown")
+        print("[modulus.scenario.WaterTank] Water tank scenario shutdown")
