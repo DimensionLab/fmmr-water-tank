@@ -25,7 +25,7 @@ from modulus_ext.ui.scenario import (
 from .visualizer import Visualizer
 from .water_tank_runner import ModulusWaterTankRunner
 from .constants import bounds
-from .src.water_tank import inlet_vel
+from .src.water_tank import inlet_vel_range
 
 class WaterTankScenario(ModulusOVScenario):
     def __init__(self):
@@ -42,10 +42,12 @@ class WaterTankScenario(ModulusOVScenario):
         self.solver_train_initialized = False
         self.solver_eval_initialized = False
         self._eval_complete = False
-        self._resolution = (200, 200, 200)
+        self.resolution = [128, 128, 128]
 
         vram_gb = torch.cuda.get_device_properties(0).total_memory / 10**9
         eco = vram_gb < 13  # 12 Gb and below GPUs, turn on eco mode
+
+        self.inlet_velocity = 1.5
 
         self.visualizer = Visualizer()
         self._usd_context = omni.usd.get_context()
@@ -60,9 +62,9 @@ class WaterTankScenario(ModulusOVScenario):
         height_slider = ModulusOVFloatSlider(
             name="Inlet Velocity",
             desc="Inlet velocity from the top for Inference",
-            default_value=self.hs_height,
-            bounds=HS_height_range,
-            update_func=self.update_hs_height,
+            default_value=self.inlet_velocity,
+            bounds=inlet_vel_range,
+            update_func=self.update_inlet_velocity,
         )
         self.add(height_slider)
 
@@ -224,11 +226,32 @@ class WaterTankScenario(ModulusOVScenario):
     def run_inference(self):
         self.inf_button.text = "Running Inference..."
         print("Water tank inferencer started")
-        pred_vars = self.simulator_runner.run_inference(
-            resolution=list(self._resolution),
+
+        if self.simulator_runner.eco:
+            resolution_x = 64
+            resolution_y = 32
+            resolution_z = 64
+        else:
+            resolution_x = 128
+            resolution_y = 128
+            resolution_z = 128
+
+        if (resolution_x, resolution_y, resolution_z) != self.resolution:
+            print(
+                f"Initializing inferencer with a resolution of {resolution_x}*{resolution_y}*{resolution_z}"
+            )
+            self.resolution = [resolution_x, resolution_y, resolution_z]
+
+        print(
+            f"Will run inferencing for inlet_velocity={self.inlet_velocity}"
         )
 
-        shape = tuple(self._resolution)
+        pred_vars = self.simulator_runner.run_inference(
+            inlet_velocity=self.inlet_velocity,
+            resolution=list(self.resolution),
+        )
+
+        shape = tuple(self.resolution)
         u = pred_vars["u"].reshape(shape)
         v = pred_vars["v"].reshape(shape)
         w = pred_vars["w"].reshape(shape)
@@ -268,8 +291,11 @@ class WaterTankScenario(ModulusOVScenario):
         if not all(v is not None for v in [self._velocity, self._velmag, self._bounds]):
             return
         self.visualizer.update_data(
-            self._velocity, self._velmag, self._bounds, self._vel_mask, self._resolution
+            self._velocity, self._velmag, self._bounds, self._vel_mask, self.resolution
         )
+
+    def update_inlet_velocity(self, value: float):
+        self.inlet_velocity = value
 
     def update_isovalue(self, isovalue):
         print(f"Updating isovalue: {isovalue}")

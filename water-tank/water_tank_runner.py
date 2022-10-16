@@ -16,9 +16,12 @@ from modulus.domain.inferencer import (
 from modulus_ext.ui.scenario import ModulusOVProgressBar
 from modulus.key import Key
 from modulus.key import Key
+from modulus.eq.pdes.navier_stokes import NavierStokes
+from modulus.eq.pdes.basic import NormalDotVec
 from modulus.geometry.tessellation import Tessellation
 
 from .constants import bounds
+from .src.geometry import WaterTank
 
 
 class ModulusWaterTankRunner(object):
@@ -37,6 +40,16 @@ class ModulusWaterTankRunner(object):
     ):
 
         logging.getLogger().addHandler(logging.StreamHandler())
+        ##############################
+        # Nondimensionalization Params
+        ##############################
+        # fluid params
+        # Water at 20°C (https://wiki.anton-paar.com/en/water/)
+        # https://en.wikipedia.org/wiki/Viscosity#Kinematic_viscosity
+        self.nu = 1.787e-06  # m2 * s-1
+        self.inlet_vel = Symbol("inlet_velocity")
+        self.rho = 1
+        self.scale = 1.0
 
         self.cfg = cfg
         self.progress_bar = progress_bar
@@ -64,18 +77,45 @@ class ModulusWaterTankRunner(object):
         checkpoint_dir : Union[str, None], optional
             Directory to modulus checkpoint
         """
+        # make list of nodes to unroll graph on
+        ns = NavierStokes(nu=self.nu * self.scale, rho=self.rho, dim=3, time=False)
+        normal_dot_vel = NormalDotVec(["u", "v", "w"])
+
+        self.progress_bar.value = 0.025
+        equation_nodes = (
+            ns.make_nodes()
+            + normal_dot_vel.make_nodes()
+        )
+
         # determine inputs outputs of the network
-        invar_keys = [Key("x"), Key("y"), Key("z")]
-        outvar_keys = [Key("u"), Key("v"), Key("w"), Key("p")]
+        input_keys = [Key("x"), Key("y"), Key("z")]
+        input_keys += [Key("inlet_velocity")]
+        output_keys = [Key("u"), Key("v"), Key("w"), Key("p")]
 
         # select the network and the specific configs
         flow_net = FullyConnectedArch(
-            input_keys=invar_keys,
-            output_keys=outvar_keys,
+            input_keys=input_keys,
+            output_keys=output_keys,
         )
-        flow_nodes = [flow_net.make_node(name="flow_network", jit=self.cfg.jit)]
+        self.flow_nodes = equation_nodes + [
+            flow_net.make_node(name="flow_network", jit=self.cfg.jit)
+        ]
+
+        invar_keys = [
+            Key.from_str("x"),
+            Key.from_str("y"),
+            Key.from_str("z"),
+            Key.from_str("inlet_velocity"),
+        ]
+        outvar_keys = [
+            Key.from_str("u"),
+            Key.from_str("v"),
+            Key.from_str("w"),
+            Key.from_str("p"),
+        ]
+
         self._inferencer = OVVoxelInferencer(
-            nodes=flow_nodes,
+            nodes=self.flow_nodes,
             input_keys=invar_keys,
             output_keys=outvar_keys,
             mask_value=self.mask_value,
@@ -112,6 +152,7 @@ class ModulusWaterTankRunner(object):
 
     def run_inference(
         self,
+        inlet_velocity: float,
         resolution: List[int] = [256, 256, 256],
     ) -> Dict[str, np.array]:
         """Runs inference for Water Tank
@@ -145,10 +186,17 @@ class ModulusWaterTankRunner(object):
             < 0
         )
 
+        sp_array = np.ones((np.prod(resolution), 1))
+
+        specific_params = {
+            "inlet_velocity": inlet_velocity * sp_array,
+        }
+
         # Set up the voxel sample domain
         self._inferencer.setup_voxel_domain(
             bounds=self.bounds,
             npoints=resolution,
+            invar=specific_params,
             batch_size=batch_size,
             mask_fn=mask_fn,
         )
