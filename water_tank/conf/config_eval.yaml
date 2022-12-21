@@ -12,8 +12,8 @@ save_filetypes: "vtk,np"
 
 custom:
 
-network_dir: 'outputs/water_tank'
-initialization_network_dir: 'outputs/water_tank'
+network_dir: 'outputs/water_tank/checkpoints'
+initialization_network_dir: 'outputs/water_tank/checkpoints'
 
 scheduler:
   decay_rate: 0.95

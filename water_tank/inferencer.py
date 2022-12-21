@@ -23,7 +23,7 @@ def run():
 
     inferencer = PointwiseInferencer(
         nodes=nodes,
-        invar=geo.interior_mesh.sample_interior(1000000, parameterization={inlet_vel: inlet_vel_inference}),
+        invar=geo.interior_mesh.sample_interior(100000, parameterization={inlet_vel: inlet_vel_inference}),
         output_names=["u", "v", "w", "p"],
         batch_size=1024,
         requires_grad=False,
@@ -32,18 +32,18 @@ def run():
     domain.add_inferencer(inferencer, "simulation")
     
     # add meshgrid inferencer
-    mask_fn = lambda x, y, z: geo.interior_mesh.sdf({"x": x, "y": y, "z": z})[0] < 0
-    voxel_inference = VoxelInferencer(
-        bounds=[[-3, 3], [-3, 3], [-3, 3]],
-        npoints=[128, 128, 128],
-        nodes=nodes,
-        output_names=["u", "v", "w", "p"],
-        export_map={"u": ["u", "v", "w"], "p": ["p"]},
-        mask_fn=mask_fn,
-        batch_size=1024,
-        requires_grad=False,
-    )
-    domain.add_inferencer(voxel_inference, "simulation_voxel")
+    # mask_fn = lambda x, y, z: geo.interior_mesh.sdf({"x": x, "y": y, "z": z})[0] < 0
+    # voxel_inference = VoxelInferencer(
+    #     bounds=[[-3, 3], [-3, 3], [-3, 3]],
+    #     npoints=[128, 128, 128],
+    #     nodes=nodes,
+    #     output_names=["u", "v", "w", "p"],
+    #     export_map={"u": ["u", "v", "w"], "p": ["p"]},
+    #     mask_fn=mask_fn,
+    #     batch_size=1024,
+    #     requires_grad=False,
+    # )
+    # domain.add_inferencer(voxel_inference, "simulation_voxel")
 
     # make solver
     slv = Solver(cfg, domain)

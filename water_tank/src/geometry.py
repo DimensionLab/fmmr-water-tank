@@ -10,7 +10,7 @@ class WaterTank:
 
     def __init__(self):
         # read stl files to make geometry
-        point_path = to_absolute_path("./stl_files")
+        point_path = to_absolute_path("./data/stl_files")
 
         inlet_mesh = Tessellation.from_stl(
             point_path + "/inlet.stl", airtight=False
