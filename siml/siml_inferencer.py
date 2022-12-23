@@ -1,4 +1,5 @@
 import sys, os
+import json
 import torch
 import modulus
 from sympy import Symbol, Eq, Abs, tanh
@@ -18,29 +19,47 @@ from modulus.key import Key
 from modulus.eq.pdes.navier_stokes import NavierStokes
 from modulus.eq.pdes.basic import NormalDotVec
 from modulus.geometry.tessellation import Tessellation
+from json import JSONEncoder
 
 from water_tank.constants import bounds
 from water_tank.src.geometry import WaterTank
 
 
-cfg = compose(config_path="../water_tank/conf", config_name="config_eval", job_name="water_tank_inference")
-print(to_yaml(cfg))
+class NumpyArrayEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return JSONEncoder.default(self, obj)
 
 
-class ModulusWaterTankRunner(object):
+# Process ['u', 'v', 'w'] output, add 'a' as "alpha" and flatten to 1D array
+def flatten_to_uvwa(data):
+    lst = []
+    for i in range(len(data['u'])):
+        for index, item in enumerate(['u', 'v', 'w']):
+            pts = data[item][i]
+            lst.append(float(pts))
+            if item == 'w':
+                lst.append(float(1))
+    
+    return lst
 
+
+class WaterTankSimulator(object):
     """Water tank Inference runner for OV scenario
 
     Args:
         cfg (ModulusConfig): Parsed Modulus config
     """
-
     def __init__(
         self,
         mask_value: float = -100,
     ):
-
         logging.getLogger().addHandler(logging.StreamHandler())
+
+        self.cfg = compose(config_path="../water_tank/conf", config_name="config_eval", job_name="water_tank_inference")
+        print(to_yaml(self.cfg))
+
         ##############################
         # Nondimensionalization Params
         ##############################
@@ -97,7 +116,7 @@ class ModulusWaterTankRunner(object):
             output_keys=output_keys,
         )
         self.flow_nodes = equation_nodes + [
-            flow_net.make_node(name="flow_network", jit=cfg.jit)
+            flow_net.make_node(name="flow_network", jit=self.cfg.jit)
         ]
 
         invar_keys = [
@@ -120,7 +139,7 @@ class ModulusWaterTankRunner(object):
             mask_value=self.mask_value,
             requires_grad=False,
             eco=False,
-            # progress_bar=self.progress_bar,
+            # progress_bar=self.progress_bar, # TODO: implement setting progress
         )
 
         # Load checkpointed model
@@ -162,14 +181,11 @@ class ModulusWaterTankRunner(object):
         Returns:
             Dict[str, np.array]: Predicted output variables
         """
-        # self.progress_bar.value = 0
         if self._inferencer is None:
-            print("Loading Water Tank inferencer")
+            print("Loading inferencer")
             self.load_inferencer(checkpoint_dir="./checkpoints")
-            # self.progress_bar.value = 0.05
-            print("Loading Water Tank geometry")
+            print("Loading geometry")
             self.load_geometry()
-            # self.progress_bar.value = 0.1
 
         # Eco mode settings
         if self._inferencer.eco:
@@ -199,19 +215,38 @@ class ModulusWaterTankRunner(object):
             batch_size=batch_size,
             mask_fn=mask_fn,
         )
-        # self.progress_bar.value = 0.2
+
         # Perform inference
         invar, predvar = self._inferencer.query(memory_fraction)
-        # TODO: Remove should be changed to inside inferencer
-        # self.progress_bar._prev_step = 0.0
-        # self.progress_bar.value = 0.9
 
-        return predvar
+        return self._to_json(predvar)
 
     @property
     def data_path(self):
         data_dir = Path(os.path.dirname(__file__)) / Path("../data")
         return str(data_dir)
+
+    # Process ['u', 'v', 'w'] output, add 'a' as "alpha" and flatten to 1D array
+    def _flatten_to_uvwa(self, data):
+        lst = []
+        for i in range(len(data['u'])):
+            for index, item in enumerate(['u', 'v', 'w']):
+                pts = data[item][i]
+                lst.append(float(pts))
+                if item == 'w':
+                    lst.append(float(1))
+        
+        return lst
+
+    def _to_json(self, data):
+        data['u'] = np.reshape(data['u'], (-1, 1))
+        data['v'] = np.reshape(data['v'], (-1, 1))
+        data['w'] = np.reshape(data['w'], (-1, 1))
+        data['v'] = np.reshape(data['v'], (-1, 1))
+
+        numpyData = {"array": [], "uvw": self._flatten_to_uvwa(data)}
+
+        return json.dumps(numpyData, cls=NumpyArrayEncoder)
 
 #    def run_inference(self):
 #         self.inf_button.text = "Running Inference..."

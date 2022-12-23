@@ -1,62 +1,61 @@
-from typing import Union
 import json
-import numpy as np
-from json import JSONEncoder
-from fastapi import FastAPI
+from typing import List, Dict, Union
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from siml.siml_inferencer import WaterTankSimulator
 
-from siml.siml_inferencer import ModulusWaterTankRunner
+
+class WaterTankSimulatorParameters(BaseModel):
+    inlet_velocity: float
+
+
+class SimulatorSettings(BaseModel):
+    parameters: Union[WaterTankSimulatorParameters, None] = None
+    eco_mode: bool = False
+
+
+class SimulatorInput(BaseModel):
+    parameters: Union[WaterTankSimulatorParameters, None] = None
+    resolution: List[int] = [32, 32, 32]
+
 
 app = FastAPI()
 
 
-class NumpyArrayEncoder(JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return JSONEncoder.default(self, obj)
+FAKE_SIMULATORS_DB = {
+    "simulator123": WaterTankSimulator
+}
 
 
-def processData1D(data):
-    lst = []
-    for i in range(len(data['u'])):
-        for index, item in enumerate(['u', 'v', 'w']):
-            pts = data[item][i]
-            lst.append(float(pts))
-            if item == 'w':
-                lst.append(float(1))
+LOADED_SIMULATORS = {}
+
+
+@app.post("/init_simulator/{id}")
+def simulate(id: str, settings: SimulatorSettings):
+    if id not in FAKE_SIMULATORS_DB:
+        raise HTTPException(status_code=404, detail="Simulator not found")
+
+    simulator_loader = FAKE_SIMULATORS_DB.get(id)
+    LOADED_SIMULATORS[id] = simulator_loader()
+    LOADED_SIMULATORS[id].eco = settings.eco_mode
+    LOADED_SIMULATORS[id].load_geometry()
+    LOADED_SIMULATORS[id].load_inferencer()
+    return {"message": "Simulator loaded."}
+
+
+@app.post("/simulate/{id}")
+def simulate(id: str, props: SimulatorInput):
+    if id not in LOADED_SIMULATORS:
+        raise HTTPException(status_code=404, detail="Simulator not loaded")
+
+    simulator = LOADED_SIMULATORS[id]
+
+    json_output = simulator.run_inference(props.parameters.inlet_velocity, props.resolution)
     
-    return lst
+    return json_output
 
 
+# kept for testing the endpoint
 @app.get("/hello")
 def read_root():
-    return {"Hello": "World"}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-
-@app.get("/simulate")
-def simulate():
-    water_tank = ModulusWaterTankRunner()
-    print(water_tank.eco)
-    water_tank.load_geometry()
-    water_tank.load_inferencer()
-    output = water_tank.run_inference(5, [128, 128, 128])
-    #print(output)
-    output['u'] = np.reshape(output['u'], (-1, 1))
-    output['v'] = np.reshape(output['v'], (-1, 1))
-    output['w'] = np.reshape(output['w'], (-1, 1))
-    output['v'] = np.reshape(output['v'], (-1, 1))
-    #print(output['v'])
-    #print(output['v'].shape)
-    #print(processData1D(output))
-
-    numpyData = {"array": [], "uvw": processData1D(output)}
-
-    encodedNumpyData = json.dumps(numpyData, cls=NumpyArrayEncoder)
-
-    #return {"Hello": "World",}
-    
-    return encodedNumpyData
+    return {"hello": "world"}
